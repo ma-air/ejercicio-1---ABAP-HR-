@@ -1,0 +1,78 @@
+*&---------------------------------------------------------------------*
+*&  Include           Y_MHP_TOP
+*&---------------------------------------------------------------------*
+REPORT ymariaherrero.
+
+TYPE-POOLS : slis. "TIENE DEFINIDAS TODAS LAS ESTRUCUTRAS DE LOS PARAMETORS DE ENTRADA Y SALIDA DE LAS FUNCIONES
+*HAY QUE DEFINIR LA ESTRUCUTRA QUE ES LA QUE RELLENA LA BASE DE DATOS LOGICA PNP
+TABLES: pernr. "--> DATOS DE PERSONAL
+
+
+*DEFINIMOS LOS INFOTIPOS -- SIEMPRE DEBEN TENER CUATRO CIFRAS
+INFOTYPES: 0001, 0002, 0061.
+
+
+
+*DEFINIMOS EL TIPO DE ESTRUCUTRA GTY_MOSTRAR
+TYPES: BEGIN OF gty_mostrar.
+TYPES: numpersonal  TYPE persno, "ESTA EN EL INFOTIPO 1
+name   TYPE cname, "NOMBRE COMPLETO CON APELLIDOS Y TODO -----------  INFOTIPO 2
+dni TYPE prdni, "ES EL NIP -----------  INFOTIPO 2
+numss TYPE natss, "ES EL NUMERO DE LA SEGURIDAD SOCIAL ----------- INFOTIPO 61
+sociedad TYPE bukrs, "ES LA SOCIEDAD A LA QUE PERTENECE EL EMPLEADO ----------- INFOTIPO 1
+division TYPE werks, "ES LA DIVISION DONDE ESTA EL EMPLEADO -----------  INFOTIPO 1
+grupopersonal TYPE persg , "ES EL GRUPO DE PERSONAL DEL EMPLEADO ----------- INFOTIPO  1
+areapersonal TYPE persk, "ES EL AREA DE PERSONAL QUE TIENE EL EMPLEADO -----------  INFOTIPO 1
+posicion TYPE plans, "ES LA POSICION DEL EMPLEADO ----------- INFOTIPO 1
+posireservada TYPE abap_bool, "ES COMO UN BOOLEAN PARA VER SI TIENE O NO ENLACE 88R (SI EXISTE O NO POSICION RESERVADA)
+END OF gty_mostrar,
+*LA DEFINICION DE GTT_MOSTRAR NOS MUESTRA EL ACCESO A LAS SUBESTRUCTURAS -- AQUI SE CREA LA TABLA INTERNA
+gtt_mostrar TYPE STANDARD TABLE OF gty_mostrar.
+
+
+*HAY QUE AÑADIR UNA LINEA DE ENCABEZADO A LA TABLA
+DATA: gt_tabla TYPE TABLE OF gty_mostrar,
+      gs_linea TYPE gty_mostrar,
+      it_fieldcat TYPE slis_t_fieldcat_alv, "INTERNAL TABLE --- PARA ALV ---
+      wa_fieldcat TYPE slis_fieldcat_alv, "WORK AREA--- PARA ALV ---
+      repid TYPE disvariant-report,
+      ok_code TYPE sy-ucomm,
+      save_ok TYPE sy-ucomm. "NOS AYUDA EN RADIOBUTTOM
+
+DATA: gty_mostrarcsv TYPE truxs_t_text_data.
+
+*PARA EL ALV
+
+INCLUDE zisalv_table_top.
+INCLUDE zisalv_table_forms.
+
+" Clase para eventos en el ALV como doble click
+**----------------------------------------------------------------------*
+* *       class lcl_event_receiver definition
+* *----------------------------------------------------------------------*
+* *
+* *----------------------------------------------------------------------*
+
+CLASS lcl_event_receiver DEFINITION.
+  PUBLIC SECTION.
+    METHODS:
+      on_double_click       FOR EVENT double_click     OF cl_salv_events_table
+                            IMPORTING row column.
+ENDCLASS. "lcl_event_receiver DEFINITION
+
+*----------------------------------------------------------------------*
+* *       CLASS lcl_event_receiver IMPLEMENTATION
+* *----------------------------------------------------------------------*
+* *
+* *----------------------------------------------------------------------*
+CLASS lcl_event_receiver IMPLEMENTATION.
+  METHOD on_double_click.
+    CLEAR gs_linea.
+    READ TABLE gt_tabla INTO gs_linea INDEX row.
+    IF sy-subrc IS INITIAL.
+      MESSAGE i398(00) WITH 'Se realizo doble click sobre linea:' row.
+    ENDIF.
+  ENDMETHOD.                    "ON_DOUBLE_CLICK
+ENDCLASS. "lcl_event_receiver IMPLEMENTATION
+
+DATA: g_event_receiver TYPE REF TO lcl_event_receiver.
