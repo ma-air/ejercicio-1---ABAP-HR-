@@ -1,0 +1,264 @@
+*&---------------------------------------------------------------------*
+*&  Include           Y_MHP_F01
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*&      Form  F_INIT
+*&---------------------------------------------------------------------*
+
+FORM f_init.
+
+  REFRESH: gt_tabla. "ACTUALIZAMOS LA TABLA, POR SI HAY MAS O MENOS REGISTROS
+  CLEAR: gs_linea. "BORRAMOS LA LINEA (ESTRUCTURA)
+
+ENDFORM.                    "f_init
+
+*&---------------------------------------------------------------------*
+*&      Form  F_FECHA
+*&---------------------------------------------------------------------*
+
+FORM f_getdata. "ES UN GET DATA... CON SQL PROPIO DE HR
+
+  PROVIDE pernr bukrs werks persg persk plans FROM p0001 "numero de personal, sociedad, division, grupo de personal, area de personal (INFOTYPE 0001)
+    cname perid FROM p0002 "nombre completo, dni (INFOTYPE 0002)
+     natss FROM p0061 "numero de la seguridad social (INFOTYPE 0061)
+    BETWEEN p_fecha AND p_fecha.
+    "SI LA FECHA QUE INTRODUCIMOS ES MAYOR O IGUAL A LA INICIAL Y MENOR O IGUAL A LA FINAL
+
+*     Meter los valores en una variable tipo estructura/linea
+
+    gs_linea-numpersonal = p0001-pernr.
+    gs_linea-name = p0002-cname.
+    gs_linea-dni = p0002-perid.
+    gs_linea-numss = p0061-natss.
+    gs_linea-sociedad = p0001-bukrs.
+    gs_linea-division = p0001-werks.
+    gs_linea-grupopersonal = p0001-persg.
+    gs_linea-areapersonal = p0001-persk.
+    gs_linea-posicion = p0001-plans.
+   PERFORM mirar_pos.
+*     Posteriormente insertar la linea en la variable Tabla interna que hemos creado.
+    APPEND gs_linea TO gt_tabla.
+
+
+  ENDPROVIDE.
+
+ENDFORM.                    "f_fecha
+
+*&---------------------------------------------------------------------*
+*&      Form  mirar_pos
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+FORM mirar_pos.
+
+  DATA: dato TYPE hrp1001-sobid.
+  SELECT sobid INTO dato FROM hrp1001 WHERE otype = 'P'
+ AND plvar EQ '01'
+ AND istat EQ '1'
+ AND rsign EQ 'B'
+ AND relat EQ '88R'
+ AND begda LE sy-datum
+ AND endda GE sy-datum.
+*  BREAK-POINT.
+  IF dato IS  not INITIAL AND p0001-plans NE dato.
+    gs_linea-posireservada = abap_true.
+  ELSE.
+    gs_linea-posireservada = abap_false.
+  ENDIF.
+  ENDSELECT.
+ENDFORM.                    "mirar_pos
+
+
+*
+*  *&---------------------------------------------------------------------*
+*  *&      Form  crear_cabecera
+*  *&---------------------------------------------------------------------*
+*  *       text
+*  *---------------------------------------------------------------------*
+
+FORM crear_cabecera.
+
+  gl_header-titulo1 = 'Visualización por ALV'.
+  APPEND gl_header TO gt_header.
+
+  CLEAR gl_header.
+  CONCATENATE 'Usuario:' sy-uname INTO gl_header-titulo1 SEPARATED BY space. "NOS INDICA EL NOMBRE DEL USUARIO
+  APPEND gl_header TO gt_header.
+
+  WRITE sy-datum TO gl_header-titulo1 DD/MM/YYYY. "NOS PONE LA FECHA ACTUAL EN EL FORMATO QUE LE INDICAMOS
+  CONCATENATE 'Fecha Ejecución:' gl_header-titulo1 INTO gl_header-titulo1 SEPARATED BY space.
+  APPEND gl_header TO gt_header.
+
+  PERFORM set_header  TABLES gt_header USING ''.
+
+ENDFORM. "crear_cabecera
+
+
+
+
+*  *&---------------------------------------------------------------------*
+*  *&      Form  PRINT_ALV
+*  *&---------------------------------------------------------------------*
+*  *       text
+*  *----------------------------------------------------------------------*
+*  *  -->  p1        text
+*  *  <--  p2        text
+*  *----------------------------------------------------------------------*
+*
+
+FORM print_alv.
+
+*  ***Con esto se crea el objeto del ALV
+  PERFORM factory_alv.
+
+*  ***Con esto podemos agregar barra de herramienta propia al ALV
+*  *   PERFORM set_status_gui
+*  *                 USING
+*  *                     'STANDARD'.
+
+*  ***Se envian funciones por defecto al ALV
+  PERFORM set_functions
+               USING
+                  'X'.
+
+*  ***  Se agregan eventos al ALV como el del doble click
+  lr_events = gr_table->get_event( ).
+  CREATE OBJECT g_event_receiver.
+  SET HANDLER g_event_receiver->on_double_click      FOR lr_events.
+
+*  ***Se asigna atributos especiales a las columnas del ALV
+  PERFORM asignar_atributos.
+
+*  ***Se crea la cabecera del ALV
+  PERFORM crear_cabecera.
+
+* ***con esto se asigna el layout por defecto del ALV
+**  lr_layout = gr_table->get_layout( ).
+*  *  lr_layout->set_initial_layout( p_layout ).
+*
+*  ***Se muestra el ALV
+  PERFORM display_grid
+                USING space.
+ENDFORM. " PRINT_ALV
+
+**&---------------------------------------------------------------------*
+* *&      Form  ASIGNAR_ATRIBUTOS
+* *&---------------------------------------------------------------------*
+* *       text
+* *----------------------------------------------------------------------*
+* *  -->  p1        text
+* *  <--  p2        text
+* *----------------------------------------------------------------------*
+
+FORM asignar_atributos .
+
+  PERFORM set_col_attb USING: 'ID_EMP' 'LTEXT' 'CARACT_CORTO'.
+  PERFORM set_col_attb USING: 'ID_EMP' 'MTEXT' 'CARACT_MEDIANO'.
+  PERFORM set_col_attb USING: 'ID_EMP' 'STEXT' 'CARACT_ESTE ES EL MAS GRANDE'.
+
+ENDFORM. " ASIGNAR_ATRIBUTOS
+
+*&---------------------------------------------------------------------*
+*&      Form  f_conversioncsv
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+FORM f_conversioncsv.
+  DATA:
+        lv_filename    TYPE string,
+        lv_filepath    TYPE string,
+        lv_fullpath    TYPE string.
+  CALL METHOD cl_gui_frontend_services=>file_save_dialog
+    EXPORTING
+      file_filter          = '*.csv'
+      default_extension    = 'csv'
+    CHANGING
+      filename             = lv_filename
+      path                 = lv_filepath
+      fullpath             = lv_fullpath
+    EXCEPTIONS
+      cntl_error           = 1
+      error_no_gui         = 2
+      not_supported_by_gui = 3
+      OTHERS               = 4.
+  CALL FUNCTION 'SAP_CONVERT_TO_CSV_FORMAT'
+    EXPORTING
+      i_field_seperator    = ';'
+    TABLES
+      i_tab_sap_data       = gt_tabla
+    CHANGING
+      i_tab_converted_data = gty_mostrarcsv
+    EXCEPTIONS
+      conversion_failed    = 1
+      OTHERS               = 2.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  CALL FUNCTION 'GUI_DOWNLOAD'
+    EXPORTING
+      filename                = lv_filename
+    TABLES
+      data_tab                = gty_mostrarcsv
+    EXCEPTIONS
+      file_write_error        = 1
+      no_batch                = 2
+      gui_refuse_filetransfer = 3
+      invalid_type            = 4
+      no_authority            = 5
+      unknown_error           = 6.
+ENDFORM.                    "f_conversioncsv
+
+*&---------------------------------------------------------------------*
+*&      Form  f_imprimir_form
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+FORM f_imprimir_form.
+  DATA: ss_fm_name TYPE rs38l_fnam.
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      formname           = 'YMHERREROSMARTFORM'
+    IMPORTING
+      fm_name            = ss_fm_name
+    EXCEPTIONS
+      no_form            = 1
+      no_function_module = 2
+      OTHERS             = 3.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+
+  ENDIF.
+  CALL FUNCTION '/1BCDWB/SF00000416'
+* EXPORTING
+*   ARCHIVE_INDEX              =
+*   ARCHIVE_INDEX_TAB          =
+*   ARCHIVE_PARAMETERS         =
+*   CONTROL_PARAMETERS         =
+*   MAIL_APPL_OBJ              =
+*   MAIL_RECIPIENT             =
+*   MAIL_SENDER                =
+*   OUTPUT_OPTIONS             =
+*   USER_SETTINGS              = 'X'
+* IMPORTING
+*   DOCUMENT_OUTPUT_INFO       =
+*   JOB_OUTPUT_INFO            =
+*   JOB_OUTPUT_OPTIONS         =
+    TABLES
+      gt_tabla = gt_tabla
+* EXCEPTIONS
+*     FORMATTING_ERROR           = 1
+*     INTERNAL_ERROR             = 2
+*     SEND_ERROR                 = 3
+*     USER_CANCELED              = 4
+*     OTHERS   = 5
+    .
+  IF sy-subrc <> 0.
+
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.                    "f_imprimir_form
