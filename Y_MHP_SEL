@@ -1,0 +1,16 @@
+*&---------------------------------------------------------------------*
+*&  Include           Y_MHP_SEL
+*&---------------------------------------------------------------------*
+*PARAMETERS
+SELECTION-SCREEN BEGIN OF BLOCK bk1 NO INTERVALS.
+PARAMETERS: p_fecha TYPE begda.
+SELECTION-SCREEN END OF BLOCK bk1.
+
+SELECTION-SCREEN SKIP 2.
+
+*PARA ELEGIR COMO IMPRIMIR DATOS --- RADIOBUTTON
+SELECTION-SCREEN BEGIN OF BLOCK bk2 WITH FRAME TITLE text-001.
+PARAMETERS: p_excel RADIOBUTTON GROUP r1,
+p_alv RADIOBUTTON GROUP r1 DEFAULT 'X',
+p_smartf RADIOBUTTON GROUP r1.
+SELECTION-SCREEN END OF BLOCK bk2.
