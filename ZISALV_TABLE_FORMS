@@ -1,0 +1,511 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZISALV_TABLE_FORMS
+*&---------------------------------------------------------------------*
+************************************************************************
+*&                           F O R M S
+************************************************************************
+*&---------------------------------------------------------------------*
+*&      Form  display_grid
+*&---------------------------------------------------------------------*
+*       Muestra el ALV GRID
+*----------------------------------------------------------------------*
+
+FORM display_grid
+                    USING pu_popup.
+
+  IF gr_table IS NOT BOUND.
+    PERFORM factory_alv.
+    PERFORM set_functions USING 'X'.
+  ENDIF.
+
+  lr_selections = gr_table->get_selections( ).
+  lr_selections->set_selection_mode( lr_selections->multiple ).
+
+  IF pu_popup EQ 'X'.
+*... §4.1 set the size and position of the pu_popup via coordinates
+    gr_table->set_screen_popup( start_column = 1
+                                  end_column   = 120
+                                  start_line   = 1
+                                  end_line     = 20 ).
+  ENDIF.
+
+  gr_table->display( ).
+ENDFORM. "display_grid
+
+* *&---------------------------------------------------------------------*
+* *&      Form  Factory_alv
+* *&---------------------------------------------------------------------*
+* *Prepara las parametrizaciones de fabrica para mostrar el ALV Grid
+* *----------------------------------------------------------------------*
+* *      -->P_ITAB       Table que contiene la estructura e información a
+* * mostrar en el ALV GRID
+* *----------------------------------------------------------------------*
+FORM factory_alv.
+
+  TRY.
+      cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = gr_table
+      CHANGING
+        t_table      = gt_tabla[] ).
+    CATCH cx_salv_msg.                                  "#EC NO_HANDLER
+  ENDTRY.
+  DATA: lr_layout TYPE REF TO cl_salv_layout,
+        ls_key    TYPE salv_s_layout_key,
+        l_repid     TYPE sy-repid.
+
+  MOVE sy-repid TO l_repid.
+
+*... §4.1 set the Layout Key
+  ls_key-report = l_repid.
+  lr_layout = gr_table->get_layout( ).
+  lr_layout->set_key( ls_key ).
+
+*... §4.3 set Layout save restriction
+
+  lr_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+  lr_layout->set_default( if_salv_c_bool_sap=>true ).
+
+  "Set Default Variant"
+  BREAK-POINT.
+  DATA: lr_columns TYPE REF TO cl_salv_columns_table,
+        gr_column TYPE REF TO cl_salv_column_table.
+*_________________________________________________________________________*
+   lr_columns = gr_table->get_columns( ). "COGER TODAS LAS COLUMNAS
+  lr_columns->set_column_position( 'POSIRESERVADA' ). "COGER SOLO LA COLUMNA DE POSIRESERVADA
+  gr_column ?= lr_columns->get_column( 'POSIRESERVADA' ). "METER ESA COLUMNA EN GR_COLUMN
+  gr_column->set_short_text( 'Pos Res' ). "CAMBIAR EL SHORT
+  gr_column->set_medium_text( 'Posi Reserv' ). "CAMBIAR EL MEDIUM
+  gr_column->set_long_text( 'Posicion Reservada' ). "CAMBIAR EL LONG
+*_________________________________________________________________________*
+  lr_columns = gr_table->get_columns( ).
+
+  lr_columns->set_optimize( 'X' ).
+  DATA: lr_display TYPE REF TO cl_salv_display_settings.
+*     Set zebra layout
+
+  lr_display = gr_table->get_display_settings( ).
+  lr_display->set_striped_pattern( cl_salv_display_settings=>true ).
+
+ENDFORM. "factory_alv
+
+*&---------------------------------------------------------------------*
+*&      Form  Factory_alv2
+*&---------------------------------------------------------------------*
+*Prepara las parametrizaciones de fabrica para mostrar el ALV Grid
+*----------------------------------------------------------------------*
+*      -->P_ITAB       Table que contiene la estructura e información a
+* mostrar en el ALV GRID
+*----------------------------------------------------------------------*
+
+FORM factory_alv2 USING p_variant.
+
+  TRY.
+      cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = gr_table
+      CHANGING
+        t_table      = gt_tabla[] ).
+    CATCH cx_salv_msg.                                  "#EC NO_HANDLER
+  ENDTRY.
+  DATA: lr_layout TYPE REF TO cl_salv_layout,
+        ls_key    TYPE salv_s_layout_key,
+        l_repid     TYPE sy-repid.
+
+  MOVE sy-repid TO l_repid.
+*... §4.1 set the Layout Key
+
+  ls_key-report = l_repid.
+  lr_layout = gr_table->get_layout( ).
+  lr_layout->set_key( ls_key ).
+
+*... §4.3 set Layout save restriction
+
+  lr_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+  lr_layout->set_default( if_salv_c_bool_sap=>true ).
+  "Set Default Variant"
+
+*... §4.4 set initial Layout
+
+  lr_layout->set_initial_layout( p_variant ).
+
+  DATA: lr_columns TYPE REF TO cl_salv_columns.
+  lr_columns = gr_table->get_columns( ).
+  lr_columns->set_optimize( 'X' ).
+  DATA: lr_display TYPE REF TO cl_salv_display_settings.
+*     Set zebra layout
+
+  lr_display = gr_table->get_display_settings( ).
+  lr_display->set_striped_pattern( cl_salv_display_settings=>true ).
+
+ENDFORM. "factory_alv2
+
+*&---------------------------------------------------------------------*
+*&      Form  set_columns_technical
+*&---------------------------------------------------------------------*
+*       Establece como campos técnicos (ocultos) los campos pasados
+* en la tabla
+*----------------------------------------------------------------------*
+*      -->T_COL_LIST tabla con lista de Campos
+*----------------------------------------------------------------------*
+
+FORM set_columns_technical TABLES pt_col_list TYPE salv_t_column.
+  DATA: lr_columns TYPE REF TO cl_salv_columns,
+        lr_column TYPE REF TO cl_salv_column.
+  FIELD-SYMBOLS:
+        <l_col_list>.
+  BREAK-POINT.
+  lr_columns = gr_table->get_columns( ).
+  lr_columns->set_optimize( abap_true ).
+
+  LOOP AT pt_col_list ASSIGNING <l_col_list>.
+    TRY.
+        lr_column = lr_columns->get_column( <l_col_list> ).
+        lr_column->set_technical( if_salv_c_bool_sap=>true ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
+  ENDLOOP.
+ENDFORM. "set_columns_technical
+
+*&---------------------------------------------------------------------*
+*&      Form  Set_functions
+*&---------------------------------------------------------------------*
+*       Activa las funciones del ALV GRID
+*----------------------------------------------------------------------*
+*      -->ALL        SPACE: Activa las funciones por defectos del ALV
+*                      'X':   Activa TODAS las funciones del ALV GRID
+*----------------------------------------------------------------------*
+FORM set_functions USING pu_all.
+  DATA: lr_functions TYPE REF TO cl_salv_functions_list.
+  TRY.
+*... §3 Functions
+*...§3.1 activate ALV generic Functions
+      lr_functions = gr_table->get_functions( ).
+      IF pu_all EQ 'X'.
+        lr_functions->set_all( abap_true ).
+      ELSE.
+        lr_functions->set_default( abap_true ).
+      ENDIF.
+    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
+  ENDTRY.
+
+ENDFORM. "Set_functions
+
+
+*&---------------------------------------------------------------------*
+*&      Form  set_header
+*&---------------------------------------------------------------------*
+*       Cabecera del ALV
+*----------------------------------------------------------------------*
+*      -->PT_HDR_TXT          Tabla genérica de Textos de cabecera
+*           1 Fila: Título Principal del ALV (Letra BOLD)
+*           2 Fila: Subtítulo del ALV (Letra cursiva)
+*3 Fila en adelante: Elementos de textos que conformará la cabecera.}
+*Ej. | Rango de Fecha: |
+*Fecha_Desde | hasta | Fecha_Hasta |
+*               =>  Rango de Fecha: 01.01.2010 hasta 31.12.2010
+*      -->VALUE(pi_logo_name)  nombre del Logo de la cabecera.
+*
+*   Cargar logo por la Tx: OAER
+*----------------------------------------------------------------------*
+
+FORM set_header TABLES pt_hdr_txt
+USING value(pi_logo_name).
+
+  DATA: lr_top_element  TYPE REF TO cl_salv_form_layout_grid,
+  lr_grid         TYPE REF TO cl_salv_form_layout_grid,
+
+  BEGIN OF ls_inf,
+  text    TYPE string,
+  tooltip TYPE string,
+  END OF ls_inf.
+
+*// Descripción de la tabla enviada.
+
+  DATA:  lr_strcdsc TYPE REF TO cl_abap_structdescr,
+  l_row_cnt    TYPE i,
+  l_row      TYPE i,
+  l_col_cnt    TYPE i,
+  l_col      TYPE i.
+
+  FIELD-SYMBOLS: <l_comp_wa> TYPE abap_compdescr,
+  <l_value>   TYPE any.
+
+  lr_strcdsc ?= cl_abap_typedescr=>describe_by_data( pt_hdr_txt ).
+
+  DESCRIBE TABLE lr_strcdsc->components LINES l_col_cnt.
+  "Número de Columnas
+  DESCRIBE TABLE pt_hdr_txt LINES l_row_cnt.
+  "Numero de Lineas de la Cabecera
+
+
+*// Definición de Columnas en la Cabecera
+
+
+  CREATE OBJECT lr_top_element
+    EXPORTING
+      columns = 1. "l_col_cnt.
+
+
+*// Carga de textos en la cabecera linea por linea
+
+
+  LOOP AT pt_hdr_txt.
+    l_row = sy-tabix.
+
+*// Componente a componente
+
+    LOOP AT lr_strcdsc->components ASSIGNING <l_comp_wa>.
+      ASSIGN COMPONENT <l_comp_wa>-name OF STRUCTURE pt_hdr_txt TO
+      <l_value>.
+      CHECK sy-subrc EQ 0.
+
+      l_col = sy-tabix.
+
+      CASE l_row.
+        WHEN 1. "Titulo
+          IF l_col EQ 1.
+            CLEAR ls_inf.
+            MOVE <l_value> TO ls_inf-text.
+            CONTINUE.
+          ELSEIF l_col EQ 2.
+            MOVE <l_value> TO ls_inf-tooltip.
+          ELSE.
+            CONTINUE.
+          ENDIF.
+          CHECK ls_inf IS NOT INITIAL.
+          lr_top_element->create_header_information(
+                             row     = l_row
+                             column  = 1
+                             "Titulo y/o Subtitulo
+                             text    = ls_inf-text
+                             tooltip = ls_inf-tooltip ).
+        WHEN 2. "Subtitulos
+          IF l_col EQ 1.
+            CLEAR ls_inf.
+            MOVE <l_value> TO ls_inf-text.
+            CONTINUE.
+          ELSEIF l_col EQ 2.
+            MOVE <l_value> TO ls_inf-tooltip.
+          ELSE.
+            CONTINUE.
+          ENDIF.
+          CHECK ls_inf IS NOT INITIAL.
+          lr_top_element->create_action_information(
+                               row     = l_row
+                               column  = 1
+                               text    = ls_inf-text
+                               tooltip = ls_inf-tooltip )
+                               .
+        WHEN OTHERS.
+          IF l_row EQ 3 AND l_col EQ 1.
+            "Si existen lineas de detalle, se crea el grid para los textos
+            "Solo para 1 vez
+            lr_grid = lr_top_element->create_grid( row    = l_row
+                                      column = 1 ).
+          ENDIF.
+          CHECK <l_value> IS NOT INITIAL.
+          l_row_cnt = l_row - 2.
+          lr_grid->create_text( row     = l_row_cnt
+                              column  = l_col
+                              text    =  <l_value> ).
+      ENDCASE.
+    ENDLOOP.
+  ENDLOOP.
+
+
+  DATA: lr_logo  TYPE REF TO cl_salv_form_layout_logo.
+
+  IF pi_logo_name IS INITIAL.
+    pi_logo_name = 'ENJOY'.
+  ENDIF.
+
+
+  IF pi_logo_name IS NOT INITIAL.
+
+    IF pi_logo_name = 'NO_LOGO'.
+
+      TRY .
+          CREATE OBJECT lr_logo.
+          lr_logo->set_left_content( lr_top_element ).
+          gr_table->set_top_of_list( lr_logo ).
+        CATCH cx_sy_ref_is_initial.                     "#EC NO_HANDLER
+      ENDTRY.
+
+    ELSE.
+
+      TRY .
+          CREATE OBJECT lr_logo.
+          lr_logo->set_left_content( lr_top_element ).
+          lr_logo->set_right_logo( pi_logo_name ).
+          gr_table->set_top_of_list( lr_logo ).
+        CATCH cx_sy_ref_is_initial.                     "#EC NO_HANDLER
+      ENDTRY.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM. " set_header
+*&---------------------------------------------------------------------*
+*&      form  set_footer
+*&---------------------------------------------------------------------*
+*       genera el texto de pie de pagina
+*----------------------------------------------------------------------*
+
+FORM set_footer USING value(pi_footer).
+
+  DATA: lr_eol TYPE REF TO cl_salv_form_header_info.
+  CREATE OBJECT lr_eol
+    EXPORTING
+      text = pi_footer.
+
+  gr_table->set_end_of_list( lr_eol ).
+ENDFORM. "set_footer
+*&---------------------------------------------------------------------*
+*&      form  set_col_attb
+*&---------------------------------------------------------------------*
+*       cambio de valores de atributos de la columna especificada.
+*----------------------------------------------------------------------*
+*      -->value(pu_colname)  nombre de la columna
+*      -->value(pu_attr)    clave del atributo
+*   valores permitidos: (se pueden agregar pero no quitar ni cambiar)
+*           ltext:    texto largo
+*           mtext:    texto medio
+*           stext:    texto corto
+*           currency: columna que contiene la moneda
+*           quantity: columna que contiene la unidad de medida
+*           tech:     fijar atributo de columna tecnica
+*           icon:     mostar como icono
+*           color:    color de la fila
+*           exception: campo de excepción (semaforo)
+*           key:      fija como campo clave
+*
+*      -->value(pu_value)    valor que se asignará
+*----------------------------------------------------------------------*
+FORM set_col_attb USING value(pu_colname)
+   value(pu_attr)
+   value(pu_value).
+  DATA: lr_columns TYPE REF TO cl_salv_columns,
+  lr_column  TYPE REF TO cl_salv_column,
+  lr_icon    TYPE REF TO cl_salv_column_table,
+  lr_coltab  TYPE REF TO cl_salv_columns_table.
+
+  lr_columns = gr_table->get_columns( ).
+
+  TRY.
+      lr_column = lr_columns->get_column( pu_colname ).
+      TRANSLATE pu_attr TO UPPER CASE.
+      CASE pu_attr.
+        WHEN 'ZERO'.
+          TRY .
+              DATA: ld_zero TYPE sap_bool.
+              MOVE pu_value TO ld_zero.
+              lr_column->set_zero( ld_zero ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'LTEXT'.
+          TRY .
+              DATA: l_scr_l TYPE scrtext_l.
+              MOVE pu_value TO l_scr_l.
+              lr_column->set_long_text( l_scr_l ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'MTEXT'.
+          TRY .
+              DATA: l_scr_m TYPE scrtext_m.
+              MOVE pu_value TO l_scr_m.
+              lr_column->set_medium_text( l_scr_m ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'STEXT'.
+          TRY .
+              DATA: l_scr_s TYPE scrtext_s.
+              MOVE pu_value TO l_scr_s.
+              lr_column->set_short_text( l_scr_s ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'LENGHT'.
+          TRY .
+              lr_column->set_output_length( pu_value ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'CURRENCY'.
+          TRY .
+              lr_column->set_currency_column( pu_value ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'QUANTITY'.
+          TRY .
+              lr_column->set_quantity_column( pu_value ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'TECH'.
+          TRY .
+              lr_column->set_technical( pu_value ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'VISIBLE'.
+          TRY .
+              lr_column->set_visible( pu_value ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'ICON'.
+          TRY.
+              lr_icon ?= lr_columns->get_column( pu_colname ).
+              lr_icon->set_icon( if_salv_c_bool_sap=>true ).
+              lr_icon->set_long_text( pu_value ).
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'HOTSPOT'.
+          TRY.
+              lr_icon ?= lr_columns->get_column( pu_colname ).
+              lr_icon->set_cell_type( if_salv_c_cell_type=>hotspot ).
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'CHECKBOX_HOTSPOT'.
+          TRY.
+              lr_icon ?= lr_columns->get_column( pu_colname ).
+              lr_icon->set_cell_type(
+              if_salv_c_cell_type=>checkbox_hotspot ).
+              lr_icon->set_output_length( 10 ).
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'CHECKBOX'.
+          TRY.
+              lr_icon ?= lr_columns->get_column( pu_colname ).
+              lr_icon->set_cell_type( if_salv_c_cell_type=>checkbox ).
+              lr_icon->set_output_length( 10 ).
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+          TRY.
+              lr_column->set_edit_mask( pu_colname ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'COLOR'.
+          TRY.
+              lr_coltab = gr_table->get_columns( ).
+              lr_coltab->set_color_column( pu_value ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+        WHEN 'EXCEPTION'.
+          TRY.
+              lr_coltab = gr_table->get_columns( ).
+              lr_coltab->set_exception_column( 'EXCEPTION' ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+
+        WHEN 'KEY'.
+          TRY.
+              lr_coltab = gr_table->get_columns( ).
+              lr_coltab->set_key_fixation( 'X' ).
+            CATCH cx_salv_data_error.                   "#EC NO_HANDLER
+          ENDTRY.
+
+        WHEN OTHERS.
+      ENDCASE.
+
+    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
+  ENDTRY.
+
+ENDFORM. "set_col_attb
