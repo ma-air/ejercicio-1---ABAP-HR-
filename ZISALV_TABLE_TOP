@@ -1,0 +1,70 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZISALV_TABLE_TOP
+*&---------------------------------------------------------------------*
+************************************************************************
+*&                            T A B L E S
+************************************************************************
+************************************************************************
+*&                            M A C R O S
+************************************************************************
+************************************************************************
+*&                         C O N S T A N T S
+************************************************************************
+************************************************************************
+*&                            T Y P E S
+************************************************************************
+
+************************************************************************
+*&                  C L A S S   D E F I N I T I O N S
+************************************************************************
+**---------------------------------------------------------------------*
+**       CLASS lcl_handle_events DEFINITION
+**---------------------------------------------------------------------*
+** §5.1 define a local class for handling events of cl_salv_table
+**---------------------------------------------------------------------*
+*class lcl_handle_events definition.
+*  public section.
+*    methods:
+*      on_user_command for event added_function of cl_salv_events
+*        importing e_salv_function.
+*endclass.                    "lcl_handle_events DEFINITION
+
+************************************************************************
+*&               C L A S S   I M P L E M E N T A T I O N S
+************************************************************************
+**---------------------------------------------------------------------*
+**       CLASS lcl_handle_events IMPLEMENTATION
+**---------------------------------------------------------------------*
+** §5.2 implement the events for handling the events of cl_salv_table
+**---------------------------------------------------------------------*
+*class lcl_handle_events implementation.
+*  method on_user_command.
+*    perform alv_user_command using e_salv_function.
+*  endmethod.                    "on_user_command
+*endclass.                    "lcl_handle_events IMPLEMENTATION
+
+************************************************************************
+*&         D A T A   O B J E C T S   -   F I E L D - S Y M B O L S
+************************************************************************
+DATA: gr_table TYPE REF TO cl_salv_table.
+
+
+DATA:  lr_selections TYPE REF TO cl_salv_selections,
+       lt_rows TYPE salv_t_row,
+       l_rows LIKE LINE OF lt_rows.
+
+TYPES BEGIN OF gs_header.
+TYPES: titulo1(200) TYPE c,
+       titulo2(100) TYPE c,
+       titulo3(100) TYPE c.
+TYPES END OF gs_header.
+
+
+DATA: gt_header TYPE STANDARD TABLE OF gs_header.
+DATA gl_header LIKE LINE OF gt_header.
+DATA ld_lineas TYPE i.
+
+DATA: lr_events TYPE REF TO cl_salv_events_table.
+DATA: lr_layout TYPE REF TO cl_salv_layout,
+       ls_key    TYPE salv_s_layout_key,
+       l_repid     TYPE sy-repid.
