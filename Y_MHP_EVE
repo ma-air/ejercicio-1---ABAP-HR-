@@ -1,0 +1,39 @@
+*&---------------------------------------------------------------------*
+*&  Include           Y_MHP_EVE
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*                          INITIALIZATION                              *
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM: f_init. " form en f01
+*&---------------------------------------------------------------------*
+*                           AT SELECTION-SCREEN                        *
+*&---------------------------------------------------------------------*
+
+AT SELECTION-SCREEN.
+
+*&---------------------------------------------------------------------*
+*                           START-OF-SELECTION                         *
+*&---------------------------------------------------------------------*
+
+START-OF-SELECTION.
+
+
+* USA LA BASE DE DATOS LOGICA PNP
+GET pernr." --> METE LOS DATOS EN LAS ESTRUCTURAS DE LOS INFOTIPOS
+  PERFORM: f_getdata. " form en f01
+
+*&---------------------------------------------------------------------*
+*                           END-OF-SELECTION                           *
+*&---------------------------------------------------------------------*
+
+END-OF-SELECTION.
+*  BREAK-POINT.
+  CASE 'X'.
+    WHEN p_excel.
+      PERFORM f_conversioncsv.
+    WHEN p_alv.
+      PERFORM print_alv.
+    WHEN p_smartf.
+      PERFORM f_imprimir_form.
+      ENDCASE.
