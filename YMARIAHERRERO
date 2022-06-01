@@ -1,0 +1,17 @@
+*&---------------------------------------------------------------------*
+*&INFORMACIÓN GENERAL
+*&WRICEF                 :   Ejercicio 1 - María Herrero
+*&Nombre del Programa    :   YMARIAHERRERO
+*&Título                 :   Ejercicio 1. María Herrero
+*&Autor                  :   MARÍA HERRERO
+*&Fecha de creación      :   17.05.2022 13:26:08
+*&Tipo                   :   Programa ejectuable
+*&Llamado por            :
+*&Descripción            :
+*&
+*&*************************************************************************
+
+INCLUDE y_mhp_top.
+INCLUDE y_mhp_sel.
+INCLUDE y_mhp_eve.
+INCLUDE y_mhp_f01.
