@@ -53,19 +53,19 @@ ENDFORM.                    "f_fecha
 FORM mirar_pos.
 
   DATA: dato TYPE hrp1001-sobid.
-  SELECT sobid INTO dato FROM hrp1001 WHERE otype = 'P'
+  SELECT sobid INTO dato FROM hrp1001 WHERE otype = 'P' AND objid = gs_linea-numpersonal
  AND plvar EQ '01'
  AND istat EQ '1'
  AND rsign EQ 'B'
  AND relat EQ '88R'
  AND begda LE sy-datum
  AND endda GE sy-datum.
-*  BREAK-POINT.
-  IF dato IS  not INITIAL AND p0001-plans NE dato.
-    gs_linea-posireservada = abap_true.
-  ELSE.
-    gs_linea-posireservada = abap_false.
-  ENDIF.
+*     BREAK-POINT.
+    IF dato IS  NOT INITIAL AND p0001-plans NE dato.
+      gs_linea-posireservada = abap_true.
+    ELSE.
+      gs_linea-posireservada = abap_false.
+    ENDIF.
   ENDSELECT.
 ENDFORM.                    "mirar_pos
 
